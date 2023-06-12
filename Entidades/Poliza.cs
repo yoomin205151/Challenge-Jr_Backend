@@ -12,6 +12,6 @@ namespace AdminPolizasAPI.Entidades
         [MaxLength(256)]
         public string Nombre { get; set; }
 
-        public List<PolizasCoberturas> PolizasCoberturas { get; set; }
+        //public List<PolizasCoberturas> PolizasCoberturas { get; set; }
     }
 }
