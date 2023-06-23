@@ -4,7 +4,7 @@
 
 namespace AdminPolizasAPI.Migrations
 {
-    public partial class MigrationsPolizasCoberturas : Migration
+    public partial class firstMigration : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

@@ -2,6 +2,7 @@
 using AdminPolizasAPI.Entidades;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using AdminPolizasAPI;
 
@@ -21,58 +22,94 @@ namespace AdminPolizasAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<Poliza>> GetAllPolizas()
         {
-            // Lógica para obtener todas las polizas desde la base de datos
-            var polizas = _dbContext.Polizas;
-            return Ok(polizas);
+            try
+            {
+                var polizas = _dbContext.Polizas;
+                return Ok(polizas);
+            }
+            catch (Exception ex)
+            {
+                // Manejo de errores
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error al obtener las pólizas.");
+            }
         }
 
         [HttpGet("{id}")]
         public ActionResult<Poliza> GetPolizaById(int id)
         {
-            var poliza = _dbContext.Polizas.Find(id);
-            if (poliza == null)
+            try
             {
-                return NotFound();
+                var poliza = _dbContext.Polizas.Find(id);
+                if (poliza == null)
+                {
+                    return NotFound();
+                }
+                return Ok(poliza);
             }
-            return Ok(poliza);
+            catch (Exception ex)
+            {
+                // Manejo de errores
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error al obtener la póliza.");
+            }
         }
 
         [HttpPost]
         public ActionResult<Poliza> CreatePoliza(Poliza poliza)
         {
-            // Lógica para crear una nueva cobertura en la base de datos
-            _dbContext.Polizas.Add(poliza);
-            _dbContext.SaveChanges();
-            return CreatedAtAction(nameof(GetPolizaById), new { id = poliza.Id }, poliza);
+            try
+            {
+                _dbContext.Polizas.Add(poliza);
+                _dbContext.SaveChanges();
+                return CreatedAtAction(nameof(GetPolizaById), new { id = poliza.Id }, poliza);
+            }
+            catch (Exception ex)
+            {
+                // Manejo de errores
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error al crear la póliza.");
+            }
         }
 
         [HttpPut("{id}")]
         public IActionResult UpdatePoliza(int id, Poliza poliza)
         {
-            // Lógica para actualizar una poliza en la base de datos
-            var existingPolizas = _dbContext.Polizas.Find(id);
-            if (existingPolizas == null)
+            try
             {
-                return NotFound();
+                var existingPoliza = _dbContext.Polizas.Find(id);
+                if (existingPoliza == null)
+                {
+                    return NotFound();
+                }
+                existingPoliza.Nombre = poliza.Nombre;
+                // Actualizar otros campos según tu modelo de datos
+                _dbContext.SaveChanges();
+                return NoContent();
             }
-            existingPolizas.Nombre = poliza.Nombre;
-            // Actualiza otros campos de acuerdo a tu modelo de datos
-            _dbContext.SaveChanges();
-            return NoContent();
+            catch (Exception ex)
+            {
+                // Manejo de errores
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error al actualizar la póliza.");
+            }
         }
 
         [HttpDelete("{id}")]
         public IActionResult DeletePoliza(int id)
         {
-            // Lógica para eliminar una poliza de la base de datos
-            var poliza = _dbContext.Polizas.Find(id);
-            if (poliza == null)
+            try
             {
-                return NotFound();
+                var poliza = _dbContext.Polizas.Find(id);
+                if (poliza == null)
+                {
+                    return NotFound();
+                }
+                _dbContext.Polizas.Remove(poliza);
+                _dbContext.SaveChanges();
+                return NoContent();
             }
-            _dbContext.Polizas.Remove(poliza);
-            _dbContext.SaveChanges();
-            return NoContent();
+            catch (Exception ex)
+            {
+                // Manejo de errores
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error al eliminar la póliza.");
+            }
         }
     }
 }

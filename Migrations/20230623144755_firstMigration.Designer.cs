@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AdminPolizasAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230609192339_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20230623144755_firstMigration")]
+    partial class firstMigration
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -89,13 +89,13 @@ namespace AdminPolizasAPI.Migrations
             modelBuilder.Entity("AdminPolizasAPI.Entidades.PolizasCoberturas", b =>
                 {
                     b.HasOne("AdminPolizasAPI.Entidades.Cobertura", "Cobertura")
-                        .WithMany("PolizasCoberturas")
+                        .WithMany()
                         .HasForeignKey("CoberturaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("AdminPolizasAPI.Entidades.Poliza", "Poliza")
-                        .WithMany("PolizasCoberturas")
+                        .WithMany()
                         .HasForeignKey("PolizaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -103,16 +103,6 @@ namespace AdminPolizasAPI.Migrations
                     b.Navigation("Cobertura");
 
                     b.Navigation("Poliza");
-                });
-
-            modelBuilder.Entity("AdminPolizasAPI.Entidades.Cobertura", b =>
-                {
-                    b.Navigation("PolizasCoberturas");
-                });
-
-            modelBuilder.Entity("AdminPolizasAPI.Entidades.Poliza", b =>
-                {
-                    b.Navigation("PolizasCoberturas");
                 });
 #pragma warning restore 612, 618
         }
