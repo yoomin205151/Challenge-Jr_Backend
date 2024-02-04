@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using AdminPolizasAPI;
+using Microsoft.Data.SqlClient;
 
 namespace AdminPolizasAPI.Controllers
 {
@@ -19,96 +20,148 @@ namespace AdminPolizasAPI.Controllers
             _dbContext = dbContext;
         }
 
-        [HttpGet]
-        public ActionResult<IEnumerable<Poliza>> GetAllPolizas()
+        [HttpGet("GetAllPolizas")]
+        public async Task<IActionResult> GetAllPolizas()
         {
             try
             {
-                var polizas = _dbContext.Polizas;
-                return Ok(polizas);
+
+                var poliza = await _dbContext.Polizas.FromSqlRaw("EXEC SP_LISTPOLIZAS")
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                if (poliza.Count > 1)
+                {
+                    return Ok(poliza);
+                }
+                else
+                {
+                    return NotFound("No existen registros de polizas");
+                }
+
             }
             catch (Exception ex)
             {
-                // Manejo de errores
-                return StatusCode(StatusCodes.Status500InternalServerError, "Error al obtener las pólizas.");
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
-        [HttpGet("{id}")]
-        public ActionResult<Poliza> GetPolizaById(int id)
+        [HttpGet("GetPolizaById/{id}")]
+        public IActionResult GetPolizaById(int id)
         {
             try
             {
                 var poliza = _dbContext.Polizas.Find(id);
                 if (poliza == null)
                 {
-                    return NotFound();
+                    return NotFound($"No se encontró una poliza con el ID: {id}");
                 }
                 return Ok(poliza);
             }
             catch (Exception ex)
             {
-                // Manejo de errores
-                return StatusCode(StatusCodes.Status500InternalServerError, "Error al obtener la póliza.");
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
-        [HttpPost]
-        public ActionResult<Poliza> CreatePoliza(Poliza poliza)
+        [HttpPost("CreatePolizas")]
+        public async Task<IActionResult> CreatePolizas(Poliza poliza)
         {
             try
             {
-                _dbContext.Polizas.Add(poliza);
-                _dbContext.SaveChanges();
-                return CreatedAtAction(nameof(GetPolizaById), new { id = poliza.Id }, poliza);
-            }
-            catch (Exception ex)
-            {
-                // Manejo de errores
-                return StatusCode(StatusCodes.Status500InternalServerError, "Error al crear la póliza.");
-            }
-        }
 
-        [HttpPut("{id}")]
-        public IActionResult UpdatePoliza(int id, Poliza poliza)
-        {
-            try
-            {
-                var existingPoliza = _dbContext.Polizas.Find(id);
-                if (existingPoliza == null)
+                if (ModelState.IsValid && poliza.Nombre != null)
                 {
-                    return NotFound();
+
+                    var nombre = poliza.Nombre;
+
+                    var resultado = await _dbContext.Database.ExecuteSqlRawAsync("EXEC SP_CREATEPOLIZAS @nombre",
+                                            new SqlParameter("@nombre", nombre));
+
+                    if (resultado > 0)
+                    {
+                        return Ok(resultado);
+                    }
+                    else
+                    {
+                        return BadRequest("La poliza no se pudo crear");
+                    }
+
                 }
-                existingPoliza.Nombre = poliza.Nombre;
-                // Actualizar otros campos según tu modelo de datos
-                _dbContext.SaveChanges();
-                return NoContent();
+                else
+                {
+                    return BadRequest("El modelo recibido no es valido");
+                }
+
+
             }
             catch (Exception ex)
             {
-                // Manejo de errores
-                return StatusCode(StatusCodes.Status500InternalServerError, "Error al actualizar la póliza.");
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult DeletePoliza(int id)
+        [HttpPut("UpdatePoliza/{id}")]
+        public async Task<IActionResult> UpdatePoliza(int id, Poliza poliza)
         {
             try
             {
-                var poliza = _dbContext.Polizas.Find(id);
-                if (poliza == null)
+
+                if (ModelState.IsValid && poliza.Nombre != null)
                 {
-                    return NotFound();
+                    var idPoliza = id;
+                    var nombre = poliza.Nombre;
+
+                    var resultado = await _dbContext.Database.ExecuteSqlRawAsync("EXEC SP_UPDATEPOLIZAS @id, @nombre",
+                                            new SqlParameter("@id", idPoliza),
+                                            new SqlParameter("@nombre", nombre));
+
+                    if (resultado > 0)
+                    {
+                        return Ok(true);
+                    }
+                    else
+                    {
+                        return BadRequest("La poliza no se pudo modificar");
+                    }
+
                 }
-                _dbContext.Polizas.Remove(poliza);
-                _dbContext.SaveChanges();
-                return NoContent();
+                else
+                {
+                    return BadRequest("El modelo recibido no es valido");
+                }
+
             }
             catch (Exception ex)
             {
-                // Manejo de errores
-                return StatusCode(StatusCodes.Status500InternalServerError, "Error al eliminar la póliza.");
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
+        [HttpDelete("DeletePoliza/{id}")]
+        public async Task<IActionResult> DeletePoliza(int id)
+        {
+            try
+            {
+
+                var idPoliza = id;
+
+                var resultado = await _dbContext.Database.ExecuteSqlRawAsync("EXEC SP_DELETEPOLIZAS @id",
+                                         new SqlParameter("@id", idPoliza));
+
+                if (resultado > 0)
+                {
+                    return Ok(true);
+                }
+                else
+                {
+                    return BadRequest($"No se puedo eliimnar la poliza con el id: {id}");
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
     }

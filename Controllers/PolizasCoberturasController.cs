@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using AdminPolizasAPI;
+using Microsoft.Data.SqlClient;
+using AdminPolizasAPI.DTOs;
 
 
 namespace AdminPolizasAPI.Controllers
@@ -19,63 +21,175 @@ namespace AdminPolizasAPI.Controllers
             _dbContext = dbContext;
         }
 
-        [HttpGet]
-        public ActionResult<IEnumerable<PolizasCoberturas>> GetAllPolizasCoberturas()
+        [HttpGet("GetAllPolizasCoberturas")]
+        public async Task<IActionResult> GetAllPolizasCoberturas()
         {
-            // Lógica para obtener todas las polizas desde la base de datos
-            var polizascoberturas = _dbContext.Polizas;
-            return Ok(polizascoberturas);
+            try
+            {
+
+                var polizasCoberturas = await _dbContext.PolizasCoberturas
+                                                .FromSqlRaw("EXEC SP_LISTPOLIZASCOBERTURAS")
+                                                .ToListAsync();
+
+                var polizaCoberturaDTOs = polizasCoberturas.Select(pc => new PolizasCoberturas
+                {
+                    Id = pc.Id,
+                    PolizaId = pc.PolizaId,
+                    Poliza = _dbContext.Polizas.FirstOrDefault(p => p.Id == pc.PolizaId),
+                    CoberturaId = pc.CoberturaId,
+                    Cobertura = _dbContext.Coberturas.FirstOrDefault(c => c.Id == pc.CoberturaId),
+                    MontoAsegurado = pc.MontoAsegurado
+                }).ToList();
+
+
+                if (polizasCoberturas.Count > 0)
+                {
+                    return Ok(polizasCoberturas);
+                }
+                else
+                {
+                    return NotFound("No existen registros de polizascoberturas");
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("GetPolizasCoberturasById/{id}")]
         public ActionResult<PolizasCoberturas> GetPolizasCoberturasById(int id)
         {
-            var polizascoberturas = _dbContext.Polizas.Find(id);
-            if (polizascoberturas == null)
+            try
             {
-                return NotFound();
+                var polizasCoberturas = _dbContext.PolizasCoberturas.Find(id);
+
+                if (polizasCoberturas == null)
+                {
+                    return NotFound($"No se encontró una polizascoberturas con el ID: {id}");
+                }
+
+                polizasCoberturas.Poliza = _dbContext.Polizas.FirstOrDefault(p => p.Id == polizasCoberturas.PolizaId);
+
+                polizasCoberturas.Cobertura = _dbContext.Coberturas.FirstOrDefault(c => c.Id == polizasCoberturas.CoberturaId);
+
+                return Ok(polizasCoberturas);
             }
-            return Ok(polizascoberturas);
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
         }
 
-        [HttpPost]
-        public ActionResult<PolizasCoberturas> CreatePolizasCoberturas(PolizasCoberturas polizascoberturas)
+
+        [HttpPost("CreatePolizasCoberturas")]
+        public async Task<IActionResult> CreatePolizasCoberturas(PolizasCoberturas polizascoberturas)
         {
-            // Lógica para crear una nueva cobertura en la base de datos
-            _dbContext.PolizasCoberturas.Add(polizascoberturas);
-            _dbContext.SaveChanges();
-            return CreatedAtAction(nameof(GetPolizasCoberturasById), new { id = polizascoberturas.Id }, polizascoberturas);
+            try
+            {
+
+                if (ModelState.IsValid)
+                {
+
+                    var polizaId = polizascoberturas.PolizaId;
+                    var coberturaId = polizascoberturas.CoberturaId;
+                    var monto = polizascoberturas.MontoAsegurado;
+
+                    var resultado = await _dbContext.Database.ExecuteSqlRawAsync("EXEC SP_CREATEPOLIZASCOBERTURAS @polizaID, @coberturaID, @montoAsegurado",
+                                            new SqlParameter("@polizaID", polizaId),
+                                            new SqlParameter("@coberturaID", coberturaId),
+                                            new SqlParameter("@montoAsegurado", monto));
+
+                    if (resultado > 0)
+                    {
+                        return Ok(resultado);
+                    }
+                    else
+                    {
+                        return BadRequest("La polizascobertura no se pudo crear");
+                    }
+
+                }
+                else
+                {
+                    return BadRequest("El modelo recibido no es valido");
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
         }
 
-        [HttpPut("{id}")]
-        public IActionResult UpdatePolizasCoberturas(int id, PolizasCoberturas polizascoberturas)
+        [HttpPut("UpdatePolizasCoberturas/{id}")]
+        public async Task<IActionResult> UpdatePolizasCoberturas(int id, PolizasCoberturas polizascoberturas)
         {
-            // Lógica para actualizar una poliza en la base de datos
-            var existingPolizasCoberturas = _dbContext.PolizasCoberturas.Find(id);
-            if (existingPolizasCoberturas == null)
+            try
             {
-                return NotFound();
+
+                if (ModelState.IsValid)
+                {
+                    var idPolizascoberturas = id;
+                    var polizaId = polizascoberturas.PolizaId;
+                    var coberturaId = polizascoberturas.CoberturaId;
+                    var monto = polizascoberturas.MontoAsegurado;
+
+                    var resultado = await _dbContext.Database.ExecuteSqlRawAsync("EXEC SP_UPDATEPOLIZASCOBERTURAS @id, @polizaID, @coberturaID, @montoAsegurado",
+                                            new SqlParameter("@id", idPolizascoberturas),
+                                            new SqlParameter("@polizaID", polizaId),
+                                            new SqlParameter("@coberturaID", coberturaId),
+                                            new SqlParameter("@montoAsegurado", monto));
+
+                    if (resultado > 0)
+                    {
+                        return Ok(true);
+                    }
+                    else
+                    {
+                        return BadRequest("La polizascobertura no se pudo modificar");
+                    }
+
+                }
+                else
+                {
+                    return BadRequest("El modelo recibido no es valido");
+                }
+
             }
-            existingPolizasCoberturas.Cobertura = polizascoberturas.Cobertura;
-            existingPolizasCoberturas.Poliza = polizascoberturas.Poliza;
-            existingPolizasCoberturas.MontoAsegurado = polizascoberturas.MontoAsegurado;           
-            // Actualiza otros campos de acuerdo a tu modelo de datos
-            _dbContext.SaveChanges();
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult DeletePolizasCoberturas(int id)
+        [HttpDelete("DeletePolizasCoberturas/{id}")]
+        public async Task<IActionResult> DeletePolizasCoberturas(int id)
         {
-            // Lógica para eliminar una poliza de la base de datos
-            var polizascoberturas = _dbContext.PolizasCoberturas.Find(id);
-            if (polizascoberturas == null)
+            try
             {
-                return NotFound();
+
+                var idPolizascobertura = id;
+
+                var resultado = await _dbContext.Database.ExecuteSqlRawAsync("EXEC SP_DELETEPOLIZASCOBERTURAS @id",
+                                         new SqlParameter("@id", idPolizascobertura));
+
+                if (resultado > 0)
+                {
+                    return Ok(true);
+                }
+                else
+                {
+                    return BadRequest($"No se puedo eliimnar la polizascobertura con el id: {id}");
+                }
+
             }
-            _dbContext.PolizasCoberturas.Remove(polizascoberturas);
-            _dbContext.SaveChanges();
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
         }
     }
 }

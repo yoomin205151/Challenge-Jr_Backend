@@ -12,9 +12,9 @@ namespace AdminPolizasAPI.Entidades
 
         public int CoberturaId { get; set; }
 
-        public Poliza Poliza { get; set; }
+        public Poliza? Poliza { get; set; }
 
-        public Cobertura Cobertura { get; set; }
+        public Cobertura? Cobertura { get; set; }
 
         public decimal MontoAsegurado { get; set; }
     }
